@@ -13,15 +13,12 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="dfba55b9-34ba-4d41-b92b-4f912f3f5bdc" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/lexer/lexer.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/lexer/mod.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/parser/mod.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/parser/parser.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/parser/work_session.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/lexer/blocks.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/lexer/iterator.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/lexer/token.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Cargo.toml" beforeDir="false" afterPath="$PROJECT_DIR$/Cargo.toml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/lib.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/lib.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/lexer/lexer.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/lexer/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/lexer/mod.rs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -67,9 +64,14 @@
     <property name="settings.editor.selected.configurable" value="preferences.pluginManager" />
   </component>
   <component name="RunManager">
+    <configuration default="true" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" PASS_PARENT_ENVS_2="true">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
     <configuration name="Test" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
       <option name="channel" value="DEFAULT" />
-      <option name="command" value="test --package fiber_mark --lib tests" />
+      <option name="command" value="test --package fiber_mark --lib tests -- --nocapture" />
       <option name="allFeatures" value="false" />
       <option name="emulateTerminal" value="false" />
       <option name="backtrace" value="SHORT" />
@@ -79,14 +81,10 @@
         <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
       </method>
     </configuration>
-    <configuration default="true" type="GradleAppRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" PASS_PARENT_ENVS_2="true">
-      <method v="2">
-        <option name="com.jetbrains.cidr.cpp.gradle.execution.GradleNativeBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
-      </method>
-    </configuration>
   </component>
   <component name="RustProjectSettings">
     <option name="toolchainHomeDirectory" value="$USER_HOME$/.cargo/bin" />
+    <option name="version" value="2" />
   </component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
@@ -96,7 +94,8 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1624439785854</updated>
-      <workItem from="1624439789706" duration="3254000" />
+      <workItem from="1624439789706" duration="13814000" />
+      <workItem from="1624599440420" duration="8584000" />
     </task>
     <servers />
   </component>
@@ -104,25 +103,53 @@
     <option name="version" value="3" />
   </component>
   <component name="WindowStateProjectService">
-    <state x="606" y="165" key="#com.intellij.ide.util.MemberChooser" timestamp="1624460992985">
+    <state x="300" y="165" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1624714439042">
       <screen x="0" y="25" width="1680" height="976" />
     </state>
-    <state x="606" y="165" key="#com.intellij.ide.util.MemberChooser/0.25.1680.976@0.25.1680.976" timestamp="1624460992985" />
-    <state width="1680" height="185" key="GridCell.Tab.0.bottom" timestamp="1624461462948">
+    <state x="300" y="165" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.25.1680.976@0.25.1680.976" timestamp="1624714439042" />
+    <state x="606" y="165" key="#com.intellij.ide.util.MemberChooser" timestamp="1624717095409">
       <screen x="0" y="25" width="1680" height="976" />
     </state>
-    <state width="1680" height="185" key="GridCell.Tab.0.bottom/0.25.1680.976@0.25.1680.976" timestamp="1624461462948" />
-    <state width="1680" height="185" key="GridCell.Tab.0.center" timestamp="1624461462947">
+    <state x="606" y="165" key="#com.intellij.ide.util.MemberChooser/0.25.1680.976@0.25.1680.976" timestamp="1624717095409" />
+    <state x="512" y="204" key="#com.intellij.refactoring.safeDelete.UnsafeUsagesDialog" timestamp="1624466704464">
       <screen x="0" y="25" width="1680" height="976" />
     </state>
-    <state width="1680" height="185" key="GridCell.Tab.0.center/0.25.1680.976@0.25.1680.976" timestamp="1624461462947" />
-    <state width="1680" height="185" key="GridCell.Tab.0.left" timestamp="1624461462947">
+    <state x="512" y="204" key="#com.intellij.refactoring.safeDelete.UnsafeUsagesDialog/0.25.1680.976@0.25.1680.976" timestamp="1624466704464" />
+    <state width="1680" height="296" key="GridCell.Tab.0.bottom" timestamp="1624717954194">
       <screen x="0" y="25" width="1680" height="976" />
     </state>
-    <state width="1680" height="185" key="GridCell.Tab.0.left/0.25.1680.976@0.25.1680.976" timestamp="1624461462947" />
-    <state width="1680" height="185" key="GridCell.Tab.0.right" timestamp="1624461462948">
+    <state width="1680" height="296" key="GridCell.Tab.0.bottom/0.25.1680.976@0.25.1680.976" timestamp="1624717954194" />
+    <state width="1680" height="296" key="GridCell.Tab.0.center" timestamp="1624717954193">
       <screen x="0" y="25" width="1680" height="976" />
     </state>
-    <state width="1680" height="185" key="GridCell.Tab.0.right/0.25.1680.976@0.25.1680.976" timestamp="1624461462948" />
+    <state width="1680" height="296" key="GridCell.Tab.0.center/0.25.1680.976@0.25.1680.976" timestamp="1624717954193" />
+    <state width="1680" height="296" key="GridCell.Tab.0.left" timestamp="1624717954192">
+      <screen x="0" y="25" width="1680" height="976" />
+    </state>
+    <state width="1680" height="296" key="GridCell.Tab.0.left/0.25.1680.976@0.25.1680.976" timestamp="1624717954192" />
+    <state width="1680" height="296" key="GridCell.Tab.0.right" timestamp="1624717954193">
+      <screen x="0" y="25" width="1680" height="976" />
+    </state>
+    <state width="1680" height="296" key="GridCell.Tab.0.right/0.25.1680.976@0.25.1680.976" timestamp="1624717954193" />
+    <state width="1680" height="329" key="GridCell.Tab.1.bottom" timestamp="1624715552785">
+      <screen x="0" y="25" width="1680" height="976" />
+    </state>
+    <state width="1680" height="329" key="GridCell.Tab.1.bottom/0.25.1680.976@0.25.1680.976" timestamp="1624715552785" />
+    <state width="1680" height="329" key="GridCell.Tab.1.center" timestamp="1624715552784">
+      <screen x="0" y="25" width="1680" height="976" />
+    </state>
+    <state width="1680" height="329" key="GridCell.Tab.1.center/0.25.1680.976@0.25.1680.976" timestamp="1624715552784" />
+    <state width="1680" height="329" key="GridCell.Tab.1.left" timestamp="1624715552784">
+      <screen x="0" y="25" width="1680" height="976" />
+    </state>
+    <state width="1680" height="329" key="GridCell.Tab.1.left/0.25.1680.976@0.25.1680.976" timestamp="1624715552784" />
+    <state width="1680" height="329" key="GridCell.Tab.1.right" timestamp="1624715552784">
+      <screen x="0" y="25" width="1680" height="976" />
+    </state>
+    <state width="1680" height="329" key="GridCell.Tab.1.right/0.25.1680.976@0.25.1680.976" timestamp="1624715552784" />
+    <state x="254" y="61" key="SettingsEditor" timestamp="1624713896061">
+      <screen x="0" y="25" width="1680" height="976" />
+    </state>
+    <state x="254" y="61" key="SettingsEditor/0.25.1680.976@0.25.1680.976" timestamp="1624713896061" />
   </component>
 </project>
