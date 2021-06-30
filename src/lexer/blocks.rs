@@ -1,12 +1,13 @@
 use crate::lexer::token;
 use std::{borrow::BorrowMut};
+use crate::utils::next_while::NextWhile;
 
 impl<'raw> super::Lexer<'raw> {
     pub(crate) fn read_breaks(&mut self) -> Option<token::Token> {
         let start = self.cur_position;
         let source = self.source.borrow_mut();
 
-        let slash_sequence_count = 1 + source.take_while(|&(_, chr)| chr == '-').count();
+        let slash_sequence_count = 1 + source.next_while_count(|&(_, chr)| chr == '-');
 
         if slash_sequence_count < 3 {
             None
@@ -22,7 +23,8 @@ impl<'raw> super::Lexer<'raw> {
         let start = self.cur_position;
         let source = self.source.borrow_mut();
 
-        let mark_count = 1 + source.take_while(|&(_, chr)| chr == '`').count();
+
+        let mark_count = 1 + source.next_while_count(|&(_, chr)| chr == '`');
 
         if mark_count < 3 {
             None
@@ -38,7 +40,7 @@ impl<'raw> super::Lexer<'raw> {
         let start = self.cur_position;
         let source = self.source.borrow_mut();
 
-        let level = 1 + source.take_while(|&(_, chr)| chr == '#').count();
+        let level = 1 + source.next_while_count(|&(_, chr)| chr == '#');
         let content = token::TokenContent::Heading(level as u8);
 
         let token = token::Token {

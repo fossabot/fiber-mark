@@ -1,4 +1,14 @@
+use std::fmt::{Display, Formatter};
 use std::ops::Range;
+
+#[derive(Debug)]
+pub enum TokenContent {
+    Breaks,
+    Heading(u8),
+    Code,
+    Text,
+    EOL,
+}
 
 #[derive(Debug)]
 pub struct Token {
@@ -6,9 +16,12 @@ pub struct Token {
     pub range: Range<usize>,
 }
 
-#[derive(Debug)]
-pub enum TokenContent {
-    Breaks,
-    Heading(u8),
-    Code
+impl Display for Token {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "[Token] start: {}, end: {}, content: {:?}",
+            self.range.start, self.range.end, self.content
+        )
+    }
 }
