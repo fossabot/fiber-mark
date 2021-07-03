@@ -1,7 +1,7 @@
 use std::fmt::{Display, Formatter};
 use std::ops::Range;
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum TokenContent {
     Breaks,
     Heading(u8),
@@ -10,7 +10,13 @@ pub enum TokenContent {
     EOL,
 }
 
-#[derive(Debug)]
+impl TokenContent {
+    pub(crate) fn is_single_special_char(ch: char) -> bool {
+        ['#', '-', '`'].contains(&ch)
+    }
+}
+
+#[derive(Debug, Eq, PartialEq)]
 pub struct Token {
     pub content: TokenContent,
     pub range: Range<usize>,

@@ -1,5 +1,7 @@
 mod blocks;
+mod constructors;
 mod iterator;
+mod test_util;
 mod token;
 
 use std::iter::{Enumerate, Peekable};
@@ -35,56 +37,23 @@ impl<'raw> Lexer<'raw> {
         let mut result: Option<token::Token> = None;
 
         while result.is_none() && self.cur_position + 1 < len {
-            if !self.buffer.is_empty() {
-                match self.buffer.as_str() {
-                    constants::LINE_ENDING => {
-                        let idx = self.cur_position;
-                        self.clear_buffer();
-
-                        return Some(token::Token {
-                            content: token::TokenContent::EOL,
-                            range: (idx..idx + 1),
-                        });
-                    }
-                    _ => {}
-                }
+            if let Some(flush_result) = self.flush_buffer() {
+                return Some(flush_result);
             }
 
             result = match self.source.next() {
                 Some((idx, next)) => {
                     self.cur_position = idx;
-                    match next {
-                        '#' => self.read_header(),
-                        '-' => self.read_breaks(),
-                        '`' => self.read_code_block(),
-                        _ => self.record_buffer(next, |buffer, plain_text_range| match buffer {
-                            constants::LINE_ENDING => {
-                                match plain_text_range {
-                                    Some(plain_text_range) => {
-                                        Some(token::Token {
-                                            content: token::TokenContent::Text,
-                                            // TODO: May be use Cow
-                                            range: plain_text_range.clone(),
-                                        })
-                                    }
-                                    _ => None,
-                                }
-                            }
-                            _ => {
-                                if let Some(range) = plain_text_range {
-                                    if range.end == len {
-                                        Some(token::Token {
-                                            content: token::TokenContent::Text,
-                                            range: range.clone(),
-                                        })
-                                    } else {
-                                        None
-                                    }
-                                } else {
-                                    None
-                                }
-                            }
-                        }),
+
+                    if token::TokenContent::is_single_special_char(next) {
+                        match next {
+                            '#' => self.read_header(),
+                            '-' => self.read_breaks(),
+                            '`' => self.read_code_block(),
+                            _ => None,
+                        }
+                    } else {
+                        self.record_plain_char(next, len)
                     }
                 }
                 None => None,
@@ -96,6 +65,56 @@ impl<'raw> Lexer<'raw> {
 
     fn handled_special_char(&mut self) {
         self.plain_text_range = None;
+    }
+
+    fn flush_buffer(&mut self) -> Option<token::Token> {
+        if !self.buffer.is_empty() {
+            match self.buffer.as_str() {
+                constants::LINE_ENDING => {
+                    let idx = self.cur_position;
+                    self.clear_buffer();
+
+                    return Some(token::Token {
+                        content: token::TokenContent::EOL,
+                        range: (idx..idx + 1),
+                    });
+                }
+                _ => {}
+            }
+        }
+
+        None
+    }
+
+    fn record_plain_char(&mut self, next: char, len: usize) -> Option<token::Token> {
+        self.record_buffer(next, |buffer, plain_text_range| match buffer {
+            constants::LINE_ENDING => {
+                match plain_text_range {
+                    Some(plain_text_range) => {
+                        Some(token::Token {
+                            content: token::TokenContent::Text,
+                            // TODO: May be use Cow
+                            range: plain_text_range.clone(),
+                        })
+                    }
+                    _ => None,
+                }
+            }
+            _ => {
+                if let Some(range) = plain_text_range {
+                    if range.end == len {
+                        Some(token::Token {
+                            content: token::TokenContent::Text,
+                            range: range.clone(),
+                        })
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            }
+        })
     }
 
     fn record_buffer<C>(&mut self, char: char, closure: C) -> Option<token::Token>
@@ -170,37 +189,93 @@ impl<'raw> Lexer<'raw> {
 
 #[cfg(test)]
 mod tests {
+    use super::token::Token;
     use super::Lexer;
+    use crate::lexer::test_util::read_md_file;
+    use crate::lexer::token::TokenContent::{Heading, Text, EOL, Breaks, Code};
 
     #[test]
-    fn basics() {
-        let md_str = r#"
-# Title of Markdown
-## Sub Title
+    fn by_real_md_file() {
+        let md_str = read_md_file("test.md");
 
-```
-code block here
-```
+        let lexer = Lexer::from_string(&md_str);
 
----
+        let result: Vec<Token> = lexer.into_iter().collect();
+        let expected = vec![
+            Token {
+                content: Heading(1),
+                range: 0..1,
+            },
+            Token {
+                content: Text,
+                range: 1..19,
+            },
+            Token {
+                content: EOL,
+                range: 19..20,
+            },
+            Token {
+                content: Heading(2),
+                range: 20..22,
+            },
+            Token {
+                content: Text,
+                range: 22..32,
+            },
+            Token {
+                content: EOL,
+                range: 32..33,
+            },
+            Token {
+                content: EOL,
+                range: 33..34,
+            },
+            Token {
+                content: Code,
+                range: 34..37,
+            },
+            Token {
+                content: EOL,
+                range: 37..38,
+            },
+            Token {
+                content: Text,
+                range: 38..53,
+            },
+            Token {
+                content: EOL,
+                range: 53..54,
+            },
+            Token {
+                content: Code,
+                range: 54..57,
+            },
+            Token {
+                content: EOL,
+                range: 57..58,
+            },
+            Token {
+                content: EOL,
+                range: 58..59,
+            },
+            Token {
+                content: Breaks,
+                range: 59..62,
+            },
+            Token {
+                content: EOL,
+                range: 62..63,
+            },
+            Token {
+                content: EOL,
+                range: 63..64,
+            },
+            Token {
+                content: Text,
+                range: 64..75,
+            },
+        ];
 
-Hello World
-        "#
-        .trim();
-
-        let mut lexer = Lexer::new(md_str);
-
-        while let Some(token) = lexer.next() {
-            let content = md_str[token.range.clone()].to_string();
-            println!(
-                "{}, \n content: \"{}\"",
-                token,
-                if content == "\n" {
-                    "\\n".to_string()
-                } else {
-                    content
-                }
-            );
-        }
+        assert_eq!(expected, result);
     }
 }
