@@ -1,8 +1,8 @@
 mod buffer;
-mod constructors;
-mod iterator;
+pub mod constructors;
+pub mod iterator;
 mod test_util;
-mod token;
+pub mod token;
 
 use std::iter::{Enumerate, Peekable};
 use std::str::Chars;
