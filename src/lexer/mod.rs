@@ -1,4 +1,3 @@
-mod blocks;
 mod constructors;
 mod iterator;
 mod test_util;
@@ -7,183 +6,117 @@ mod token;
 use std::iter::{Enumerate, Peekable};
 use std::str::Chars;
 
-use crate::constants;
-use std::ops::Range;
-
 pub struct Lexer<'raw> {
-    raw: &'raw str,
     source: Peekable<Enumerate<Chars<'raw>>>,
+
+    /// The current position isn't always the available index of raw string.
+    /// For example, if the `source` has been consumed completely, the `cur_position` will be
+    /// `len(source string) + 1`.
     cur_position: usize,
 
-    // lexer state
-    // TODO: May use Cow of Range to avoid cloning.
-    plain_text_range: Option<Range<usize>>,
+    /// Some temp special char sequence while handling.
     buffer: String,
+    buffer_type: Option<token::TokenContent>,
 }
 
 impl<'raw> Lexer<'raw> {
     pub fn new(str: &'raw str) -> Self {
         Lexer {
-            raw: str,
             source: str.chars().enumerate().peekable(),
             cur_position: 0,
-            plain_text_range: None,
             buffer: String::with_capacity(16),
+            buffer_type: None,
         }
     }
 
     pub fn next_token(&mut self) -> Option<token::Token> {
-        let len = self.raw.len();
         let mut result: Option<token::Token> = None;
 
-        while result.is_none() && self.cur_position + 1 < len {
-            if let Some(flush_result) = self.flush_buffer() {
-                return Some(flush_result);
-            }
+        while result.is_none() {
+            if let Some(current_item) = self.source.next() {
+                let (idx, char) = current_item;
+                self.cur_position = idx;
 
-            result = match self.source.next() {
-                Some((idx, next)) => {
-                    self.cur_position = idx;
-
-                    if token::TokenContent::is_single_special_char(next) {
-                        match next {
-                            '#' => self.read_header(),
-                            '-' => self.read_breaks(),
-                            '`' => self.read_code_block(),
-                            _ => None,
-                        }
-                    } else {
-                        self.record_plain_char(next, len)
+                if let Some(tkn_content) = self.read_buf_type(&char) {
+                    // update buffer
+                    self.buffer.push(char);
+                    self.buffer_type = tkn_content.into();
+                } else {
+                    // verify buffer
+                    if let Some(buf_tkn) = self.handle_buffer() {
+                        result = buf_tkn.into();
+                        self.clear_buffer();
                     }
+
+                    // update buffer
+                    self.buffer.push(char);
+                    self.buffer_type = self.read_buf_type(&char);
+                    debug_assert!(
+                        self.buffer_type.is_some(),
+                        "Lexer's buffer type is none after clearing buffer"
+                    );
                 }
-                None => None,
-            };
+            } else {
+                // verify rest buffer
+                self.cur_position += 1;
+                if let Some(buf_tkn) = self.handle_buffer() {
+                    result = buf_tkn.into();
+                    self.clear_buffer();
+                }
+
+                // raw string has been handled completely.
+                break;
+            }
         }
 
         result
     }
 
-    fn handled_special_char(&mut self) {
-        self.plain_text_range = None;
-    }
-
-    fn flush_buffer(&mut self) -> Option<token::Token> {
-        if !self.buffer.is_empty() {
-            match self.buffer.as_str() {
-                constants::LINE_ENDING => {
-                    let idx = self.cur_position;
-                    self.clear_buffer();
-
-                    return Some(token::Token {
-                        content: token::TokenContent::EOL,
-                        range: (idx..idx + 1),
-                    });
-                }
-                _ => {}
+    fn handle_buffer(&mut self) -> Option<token::Token> {
+        if let Some(buf_type) = &self.buffer_type {
+            match buf_type {
+                token::TokenContent::Heading(level) => token::Token {
+                    content: buf_type.clone(),
+                    range: (self.cur_position - level..self.cur_position),
+                },
+                token::TokenContent::Breaks => token::Token {
+                    content: buf_type.clone(),
+                    range: (self.cur_position - self.buffer.len()..self.cur_position),
+                },
+                token::TokenContent::CodeFence(level) => token::Token {
+                    content: buf_type.clone(),
+                    range: (self.cur_position - level..self.cur_position),
+                },
+                token::TokenContent::Text => token::Token {
+                    content: buf_type.clone(),
+                    range: (self.cur_position - self.buffer.len()..self.cur_position),
+                },
+                token::TokenContent::NewLine(eol) => token::Token {
+                    content: buf_type.clone(),
+                    range: (self.cur_position - eol.len()..self.cur_position),
+                },
             }
-        }
-
-        None
-    }
-
-    fn record_plain_char(&mut self, next: char, len: usize) -> Option<token::Token> {
-        self.record_buffer(next, |buffer, plain_text_range| match buffer {
-            constants::LINE_ENDING => {
-                match plain_text_range {
-                    Some(plain_text_range) => {
-                        Some(token::Token {
-                            content: token::TokenContent::Text,
-                            // TODO: May be use Cow
-                            range: plain_text_range.clone(),
-                        })
-                    }
-                    _ => None,
-                }
-            }
-            _ => {
-                if let Some(range) = plain_text_range {
-                    if range.end == len {
-                        Some(token::Token {
-                            content: token::TokenContent::Text,
-                            range: range.clone(),
-                        })
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
-            }
-        })
-    }
-
-    fn record_buffer<C>(&mut self, char: char, closure: C) -> Option<token::Token>
-    where
-        C: Fn(&str, Option<&Range<usize>>) -> Option<token::Token>,
-    {
-        match char {
-            '\r' | '\n' => {
-                if self.buffer.is_empty() {
-                    self.continue_plain_text();
-                }
-                self.buffer.push(char);
-            }
-            _ => {
-                if !self.buffer.is_empty() {
-                    self.buffer.push(char)
-                } else {
-                    self.record_plain_text();
-                }
-            }
-        }
-
-        if let Some(result) = closure(self.buffer.as_str(), Option::from(&self.plain_text_range)) {
-            self.handled_special_char();
-            return Some(result);
-        }
-
-        None
-    }
-
-    fn clear_buffer(&mut self) {
-        self.buffer.clear();
-    }
-
-    fn continue_plain_text(&mut self) {
-        let idx = self.cur_position;
-        match &self.plain_text_range {
-            Some(range) => {
-                self.plain_text_range = Some(range.start..idx);
-            }
-            _ => {}
-        }
-    }
-
-    fn record_plain_text(&mut self) {
-        let idx = self.cur_position;
-        match &self.plain_text_range {
-            Some(range) => {
-                self.plain_text_range = Some(range.start..idx + 1);
-            }
-            None => {
-                self.plain_text_range = Some(idx..idx + 1);
-            }
-        }
-    }
-
-    #[allow(dead_code)]
-    pub(super) fn is_last(&self) -> bool {
-        self.cur_position == self.raw.len() - 1
-    }
-
-    #[allow(dead_code)]
-    pub(super) fn next_idx(&self) -> Option<usize> {
-        let idx = self.cur_position;
-        if self.is_last() {
-            Some(idx + 1)
+            .into()
         } else {
             None
         }
+    }
+
+    fn read_buf_type(&self, char: &char) -> Option<token::TokenContent> {
+        if let Some(buf_tkn) = &self.buffer_type {
+            buf_tkn.should_continue(char)
+        } else {
+            token::TokenContent::single_char_type(char).into()
+        }
+    }
+
+    fn clear_buffer(&mut self) {
+        if self.buffer.is_empty() {
+            return;
+        }
+
+        self.buffer.clear();
+        self.buffer_type = None;
     }
 }
 
@@ -192,11 +125,21 @@ mod tests {
     use super::token::Token;
     use super::Lexer;
     use crate::lexer::test_util::read_md_file;
-    use crate::lexer::token::TokenContent::{Heading, Text, EOL, Breaks, Code};
+    use crate::lexer::token::NewLineType::UnixStyle;
+    use crate::lexer::token::TokenContent::{Breaks, CodeFence, Heading, NewLine, Text};
+
+    #[test]
+    fn print_md_file_token_stream() {
+        let md_str = read_md_file("./petite-vue.md");
+        let lexer = Lexer::from_string(&md_str);
+        for item in lexer {
+            println!("{}", item);
+        }
+    }
 
     #[test]
     fn by_real_md_file() {
-        let md_str = read_md_file("test.md");
+        let md_str = read_md_file("./test.md");
 
         let lexer = Lexer::from_string(&md_str);
 
@@ -211,7 +154,7 @@ mod tests {
                 range: 1..19,
             },
             Token {
-                content: EOL,
+                content: NewLine(UnixStyle),
                 range: 19..20,
             },
             Token {
@@ -223,19 +166,19 @@ mod tests {
                 range: 22..32,
             },
             Token {
-                content: EOL,
+                content: NewLine(UnixStyle),
                 range: 32..33,
             },
             Token {
-                content: EOL,
+                content: NewLine(UnixStyle),
                 range: 33..34,
             },
             Token {
-                content: Code,
+                content: CodeFence(3),
                 range: 34..37,
             },
             Token {
-                content: EOL,
+                content: NewLine(UnixStyle),
                 range: 37..38,
             },
             Token {
@@ -243,19 +186,19 @@ mod tests {
                 range: 38..53,
             },
             Token {
-                content: EOL,
+                content: NewLine(UnixStyle),
                 range: 53..54,
             },
             Token {
-                content: Code,
+                content: CodeFence(3),
                 range: 54..57,
             },
             Token {
-                content: EOL,
+                content: NewLine(UnixStyle),
                 range: 57..58,
             },
             Token {
-                content: EOL,
+                content: NewLine(UnixStyle),
                 range: 58..59,
             },
             Token {
@@ -263,11 +206,11 @@ mod tests {
                 range: 59..62,
             },
             Token {
-                content: EOL,
+                content: NewLine(UnixStyle),
                 range: 62..63,
             },
             Token {
-                content: EOL,
+                content: NewLine(UnixStyle),
                 range: 63..64,
             },
             Token {
