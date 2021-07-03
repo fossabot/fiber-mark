@@ -2,6 +2,7 @@ mod constructors;
 mod iterator;
 mod test_util;
 mod token;
+mod buffer;
 
 use std::iter::{Enumerate, Peekable};
 use std::str::Chars;
@@ -50,11 +51,7 @@ impl<'raw> Lexer<'raw> {
 
                     // update buffer
                     self.buffer.push(char);
-                    self.buffer_type = self.read_buf_type(&char);
-                    debug_assert!(
-                        self.buffer_type.is_some(),
-                        "Lexer's buffer type is none after clearing buffer"
-                    );
+                    self.buffer_type = Some(token::TokenContent::single_char_type(&char));
                 }
             } else {
                 // verify rest buffer
@@ -70,36 +67,6 @@ impl<'raw> Lexer<'raw> {
         }
 
         result
-    }
-
-    fn handle_buffer(&mut self) -> Option<token::Token> {
-        if let Some(buf_type) = &self.buffer_type {
-            match buf_type {
-                token::TokenContent::Heading(level) => token::Token {
-                    content: buf_type.clone(),
-                    range: (self.cur_position - level..self.cur_position),
-                },
-                token::TokenContent::Breaks => token::Token {
-                    content: buf_type.clone(),
-                    range: (self.cur_position - self.buffer.len()..self.cur_position),
-                },
-                token::TokenContent::CodeFence(level) => token::Token {
-                    content: buf_type.clone(),
-                    range: (self.cur_position - level..self.cur_position),
-                },
-                token::TokenContent::Text => token::Token {
-                    content: buf_type.clone(),
-                    range: (self.cur_position - self.buffer.len()..self.cur_position),
-                },
-                token::TokenContent::NewLine(eol) => token::Token {
-                    content: buf_type.clone(),
-                    range: (self.cur_position - eol.len()..self.cur_position),
-                },
-            }
-            .into()
-        } else {
-            None
-        }
     }
 
     fn read_buf_type(&self, char: &char) -> Option<token::TokenContent> {
