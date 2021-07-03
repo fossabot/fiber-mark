@@ -1,8 +1,8 @@
+mod buffer;
 mod constructors;
 mod iterator;
 mod test_util;
 mod token;
-mod buffer;
 
 use std::iter::{Enumerate, Peekable};
 use std::str::Chars;
@@ -18,6 +18,8 @@ pub struct Lexer<'raw> {
     /// Some temp special char sequence while handling.
     buffer: String,
     buffer_type: Option<token::TokenContent>,
+
+    cached_tkn: Option<token::Token>,
 }
 
 impl<'raw> Lexer<'raw> {
@@ -27,10 +29,29 @@ impl<'raw> Lexer<'raw> {
             cur_position: 0,
             buffer: String::with_capacity(16),
             buffer_type: None,
+            cached_tkn: None,
         }
     }
 
     pub fn next_token(&mut self) -> Option<token::Token> {
+        if let Some(tkn) = self.pure_next_token() {
+            self.ensure_continuous(tkn).into()
+        } else {
+            None
+        }
+    }
+
+    fn pure_next_token(&mut self) -> Option<token::Token> {
+        if let Some(cache) = &self.cached_tkn {
+            // TODO: Clone of Token
+            let cloned = Some(token::Token {
+                content: cache.content.clone(),
+                range: cache.range.clone(),
+            });
+            self.cached_tkn = None;
+            return cloned;
+        }
+
         let mut result: Option<token::Token> = None;
 
         while result.is_none() {
@@ -84,6 +105,27 @@ impl<'raw> Lexer<'raw> {
 
         self.buffer.clear();
         self.buffer_type = None;
+    }
+
+    fn ensure_continuous(&mut self, current: token::Token) -> token::Token {
+        let mut result = current;
+
+        while let Some(next) = self.pure_next_token() {
+            if result.range.end == next.range.start
+                && result.content == token::TokenContent::Text
+                && result.content == next.content
+            {
+                result = token::Token {
+                    content: result.content,
+                    range: (result.range.start..next.range.end),
+                };
+            } else {
+                self.cached_tkn = Some(next);
+                break;
+            }
+        }
+
+        result
     }
 }
 
